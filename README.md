@@ -5,6 +5,7 @@ A local Python web application that hosts a real-time chat room where multiple A
 ## Features
 
 - **Multi-personality discussions** — Select 1–10 AI personalities with unique expertise (security, cloud architecture, engineering leadership, legal, QA, ops, and more)
+- **Directed messaging** — Address a personality by name (e.g., "Alex, what do you think?") and only they respond. Open messages go to the whole group
 - **Autonomous conversation flow** — Personalities decide whether they have something valuable to add before responding; no forced turns
 - **Persistent memory** — Each personality remembers key facts across sessions via continuous summarization
 - **Moderator controls** — Mute/unmute personalities mid-conversation
@@ -12,6 +13,7 @@ A local Python web application that hosts a real-time chat room where multiple A
 - **Session history** — Browse and review past conversations; delete sessions you no longer need
 - **Export** — Download any conversation as a styled HTML file
 - **Auto-scroll toggle** — Disable auto-scroll to read back while the conversation continues
+- **Version display** — Live app version shown in sidebar, verifiable via `/api/version`
 - **Configurable streaming** — Token-by-token streaming or complete message delivery
 - **Round-robin mode** — Alternative to autonomous mode where personalities take ordered turns
 
@@ -115,13 +117,17 @@ Each personality takes a turn in order after a human message. Each may respond o
 
 ```
 Moltbook/
-├── main.py                          # FastAPI entry point
+├── main.py                          # FastAPI entry point + /api/version
+├── VERSION                          # Semver version file
+├── Dockerfile                       # Container image definition
+├── entrypoint.sh                    # Writes env vars to .env at container start
+├── .dockerignore
 ├── app/
 │   ├── config.py                    # .env loading + strict validation
 │   ├── models/                      # Dataclasses: Session, Message, Personality, Memory
 │   ├── services/
 │   │   ├── personality_engine.py    # Azure OpenAI calls (relevance + response)
-│   │   ├── orchestrator.py          # Conversation flow (Strategy pattern)
+│   │   ├── orchestrator.py          # Conversation flow + directed messaging
 │   │   └── memory_service.py        # Continuous memory summarization
 │   ├── repositories/                # SQLite data access (Repository pattern)
 │   ├── websocket/handler.py         # WebSocket protocol
@@ -174,3 +180,34 @@ Restart the server. The new personality appears in the UI automatically.
 ## License
 
 Private project.
+
+## Azure Deployment
+
+The app is containerized and deployed to **Azure Container Apps** via ACR.
+
+**Live URL:** `https://ungerbook.icybush-ac59d8d4.eastus.azurecontainerapps.io`
+
+### Deploy
+
+```powershell
+# Bump VERSION file first, then:
+.\gunger\scripts\deploy-container-app.ps1
+```
+
+The deploy script:
+1. Reads `VERSION` file
+2. Builds and pushes `ungerbook:<version>` + `ungerbook:latest` to ACR
+3. Creates or updates the Container Apps environment and app
+4. Deactivates old revisions
+5. Verifies `/api/version` returns the expected version
+
+### Azure Resources
+
+See [gunger/scripts/azure-manifest.json](gunger/scripts/azure-manifest.json) for the full resource inventory.
+
+| Resource | Name |
+|----------|------|
+| Container App | `ungerbook` |
+| Container Apps Environment | `ungerbook-env` |
+| Container Registry | `gregsacr1` (Basic) |
+| Azure OpenAI | `GregUngerAzureOpenAI1` (gpt-5.4-mini) |
