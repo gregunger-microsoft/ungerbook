@@ -35,5 +35,8 @@ data/sessions/
 Thumbs.db
 .DS_Store
 
+# Prompts / internal
+gunger/
+
 # Test artifacts
 test_api.py
