@@ -1,0 +1,11 @@
+.env
+.git
+.gitignore
+.pytest_cache
+__pycache__
+tests/
+data/
+gunger/
+test_api.py
+README.md
+*.pyc
