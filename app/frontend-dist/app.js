@@ -23,6 +23,7 @@
     const endBtn = document.getElementById("end-btn");
     const pauseBtn = document.getElementById("pause-btn");
     const autoscrollBtn = document.getElementById("autoscroll-btn");
+    const exportBtn = document.getElementById("export-btn");
     const chatTopic = document.getElementById("chat-topic");
     const chatMessages = document.getElementById("chat-messages");
     const messageInput = document.getElementById("message-input");
@@ -133,6 +134,70 @@
         autoScroll = !autoScroll;
         autoscrollBtn.textContent = autoScroll ? "Auto-scroll: ON" : "Auto-scroll: OFF";
         autoscrollBtn.classList.toggle("active", autoScroll);
+    });
+
+    // --- Export conversation ---
+    exportBtn.addEventListener("click", () => {
+        const topic = chatTopic.textContent || "Conversation";
+        const msgs = chatMessages.querySelectorAll(".chat-message");
+        if (msgs.length === 0) return;
+
+        let rows = "";
+        msgs.forEach(msg => {
+            const isHuman = msg.classList.contains("human");
+            const name = msg.querySelector(".msg-sender")?.textContent || "Unknown";
+            const content = msg.querySelector(".msg-content")?.textContent || "";
+            const time = msg.querySelector(".msg-time")?.textContent || "";
+            const avatarEl = msg.querySelector(".msg-avatar");
+            const color = avatarEl ? avatarEl.style.background : "#7f8c8d";
+            const align = isHuman ? "right" : "left";
+            const bgColor = isHuman ? "#0f3460" : "#16213e";
+
+            rows += `
+            <div style="display:flex;gap:12px;max-width:80%;margin-bottom:16px;${isHuman ? 'margin-left:auto;flex-direction:row-reverse;' : ''}">
+                <div style="width:36px;height:36px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0;">${avatarEl ? avatarEl.textContent : '?'}</div>
+                <div style="background:${bgColor};border:1px solid #0f3460;border-radius:12px;padding:10px 16px;">
+                    <div style="font-size:12px;font-weight:600;color:${color};margin-bottom:4px;">${escapeHtml(name)}</div>
+                    <div style="font-size:14px;line-height:1.5;color:#e0e0e0;">${escapeHtml(content)}</div>
+                    <div style="font-size:10px;color:#555;margin-top:4px;text-align:right;">${time}</div>
+                </div>
+            </div>`;
+        });
+
+        const now = new Date().toLocaleString();
+        const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Ungerbook Export - ${escapeHtml(topic)}</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1a1a2e; color: #e0e0e0; margin: 0; padding: 0; }
+  .header { background: #16213e; padding: 24px 40px; border-bottom: 2px solid #e94560; }
+  .header h1 { color: #e94560; font-size: 1.4rem; margin: 0 0 4px; }
+  .header .topic { font-size: 1.1rem; color: #e0e0e0; margin: 0 0 4px; }
+  .header .meta { font-size: 0.75rem; color: #666; }
+  .messages { padding: 30px 40px; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>Ungerbook</h1>
+  <p class="topic">${escapeHtml(topic)}</p>
+  <p class="meta">Exported on ${now} &middot; ${msgs.length} messages</p>
+</div>
+<div class="messages">
+${rows}
+</div>
+</body>
+</html>`;
+
+        const blob = new Blob([html], { type: "text/html" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `ungerbook-${topic.replace(/[^a-zA-Z0-9]/g, '-').substring(0, 50)}.html`;
+        a.click();
+        URL.revokeObjectURL(url);
     });
 
     function connectWebSocket(topic, personalityIds) {
