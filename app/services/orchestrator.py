@@ -15,11 +15,12 @@ from app.models.personality import Personality
 from app.models.session import Session
 from app.repositories.base import SessionRepositoryBase, MessageRepositoryBase
 from app.services.memory_service import MemoryService
-from app.services.personality_engine import PersonalityEngine, RelevanceResult
+from app.services.personality_engine import PersonalityEngine, RelevanceResult, TokenUsage
 
 logger = logging.getLogger(__name__)
 
 MessageCallback = Callable[[dict], Awaitable[None]]
+TokenCallback = Callable[[int], Awaitable[None]]
 
 
 @dataclass
@@ -43,6 +44,7 @@ class ConversationStrategy(ABC):
         message_repo: MessageRepositoryBase,
         config: AppConfig,
         send_callback: MessageCallback,
+        token_callback: Optional[TokenCallback] = None,
     ) -> None:
         ...
 
@@ -57,6 +59,7 @@ class AutonomousStrategy(ConversationStrategy):
         message_repo: MessageRepositoryBase,
         config: AppConfig,
         send_callback: MessageCallback,
+        token_callback: Optional[TokenCallback] = None,
     ) -> None:
         eligible = get_eligible_personalities(state, new_message.sender_id)
         if not eligible:
@@ -91,10 +94,13 @@ class AutonomousStrategy(ConversationStrategy):
         for r in results:
             if isinstance(r, Exception):
                 logger.error(f"Relevance check exception: {r}")
-            elif isinstance(r, RelevanceResult):
-                logger.info(f"Relevance result: {r.personality_id} -> respond={r.should_respond}, urgency={r.urgency}")
-                if r.should_respond:
-                    want_to_respond.append(r)
+            elif isinstance(r, tuple):
+                rel, usage = r
+                if token_callback and usage.total_tokens > 0:
+                    await token_callback(usage.total_tokens)
+                logger.info(f"Relevance result: {rel.personality_id} -> respond={rel.should_respond}, urgency={rel.urgency}")
+                if rel.should_respond:
+                    want_to_respond.append(rel)
 
         logger.info(f"Personalities wanting to respond: {len(want_to_respond)} / {len(eligible)}")
         queue = order_response_queue(want_to_respond, state.last_speaker_id)
@@ -133,8 +139,14 @@ class AutonomousStrategy(ConversationStrategy):
 
                 full_content = "".join(chunks)
                 await send_callback({"type": "stream_end", "msg_id": msg_id})
+
+                stream_usage = engine.get_last_stream_usage()
+                if token_callback and stream_usage.total_tokens > 0:
+                    await token_callback(stream_usage.total_tokens)
             else:
-                full_content = await engine.generate_response(p, state.session.topic, refreshed, mem)
+                full_content, gen_usage = await engine.generate_response(p, state.session.topic, refreshed, mem)
+                if token_callback and gen_usage.total_tokens > 0:
+                    await token_callback(gen_usage.total_tokens)
                 now = datetime.now(timezone.utc).isoformat()
                 msg_id = str(uuid.uuid4())
 
@@ -181,6 +193,7 @@ class RoundRobinStrategy(ConversationStrategy):
         message_repo: MessageRepositoryBase,
         config: AppConfig,
         send_callback: MessageCallback,
+        token_callback: Optional[TokenCallback] = None,
     ) -> None:
         eligible = get_eligible_personalities(state, new_message.sender_id)
         if not eligible:
@@ -194,14 +207,18 @@ class RoundRobinStrategy(ConversationStrategy):
             p = state.personalities[pid]
             mem = await memory_service.get_memory_text(pid)
 
-            relevance = await engine.check_relevance(p, state.session.topic, recent, new_message, mem)
+            relevance, rel_usage = await engine.check_relevance(p, state.session.topic, recent, new_message, mem)
+            if token_callback and rel_usage.total_tokens > 0:
+                await token_callback(rel_usage.total_tokens)
             if not relevance.should_respond:
                 continue
 
             refreshed = await message_repo.get_by_session(
                 state.session.id, limit=config.max_context_messages
             )
-            full_content = await engine.generate_response(p, state.session.topic, refreshed, mem)
+            full_content, gen_usage = await engine.generate_response(p, state.session.topic, refreshed, mem)
+            if token_callback and gen_usage.total_tokens > 0:
+                await token_callback(gen_usage.total_tokens)
             now = datetime.now(timezone.utc).isoformat()
             msg_id = str(uuid.uuid4())
 
@@ -300,6 +317,7 @@ class Orchestrator:
         self._all_personalities = all_personalities
         self._state = ConversationState()
         self._send_callback: Optional[MessageCallback] = None
+        self._token_callback: Optional[TokenCallback] = None
 
         if config.conversation_mode == "autonomous":
             self._strategy: ConversationStrategy = AutonomousStrategy()
@@ -312,6 +330,9 @@ class Orchestrator:
 
     def set_send_callback(self, callback: MessageCallback) -> None:
         self._send_callback = callback
+
+    def set_token_callback(self, callback: TokenCallback) -> None:
+        self._token_callback = callback
 
     def pause(self) -> None:
         self._state.is_paused = True
@@ -404,6 +425,7 @@ class Orchestrator:
                     self._message_repo,
                     self._config,
                     self._send_callback,
+                    self._token_callback,
                 )
         finally:
             self._state.is_processing = False

@@ -42,6 +42,7 @@
         await loadPersonalities();
         await loadSessionHistory();
         await loadVersion();
+        await loadAccessInfo();
     }
 
     async function loadVersion() {
@@ -52,6 +53,39 @@
         } catch (e) {
             document.getElementById("version-label").textContent = "";
         }
+    }
+
+    async function loadAccessInfo() {
+        try {
+            const res = await fetch("/api/guestbook/me");
+            if (!res.ok) return;
+            const data = await res.json();
+            const fmt = (iso) => {
+                if (!iso) return "—";
+                const d = new Date(iso);
+                return d.toLocaleDateString([], { month: "short", day: "numeric" })
+                    + " " + d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+            };
+            document.getElementById("access-code").textContent = data.activation_code;
+            document.getElementById("access-start").textContent = fmt(data.activated_at);
+            document.getElementById("access-expires").textContent = fmt(data.expires_at);
+            updateTokenMeter(data.tokens_used || 0, data.max_tokens || 100000);
+            document.getElementById("access-info").style.display = "block";
+        } catch (e) {}
+    }
+
+    function updateTokenMeter(used, max) {
+        const pct = Math.min((used / max) * 100, 100);
+        const fill = document.getElementById("token-bar-fill");
+        const usedEl = document.getElementById("tokens-used");
+        const maxEl = document.getElementById("tokens-max");
+        if (!fill) return;
+        fill.style.width = pct + "%";
+        fill.classList.remove("warning", "danger");
+        if (pct >= 90) fill.classList.add("danger");
+        else if (pct >= 70) fill.classList.add("warning");
+        usedEl.textContent = used.toLocaleString();
+        maxEl.textContent = max.toLocaleString();
     }
 
     async function loadPersonalities() {
@@ -269,6 +303,9 @@ ${rows}
                 break;
             case "unmuted":
                 updateToggle(data.personality_id, true);
+                break;
+            case "token_update":
+                updateTokenMeter(data.tokens_used, data.max_tokens);
                 break;
             case "error":
                 console.error("Server error:", data.message);

@@ -14,6 +14,20 @@
                 <h1>Ungerbook</h1>
                 <p class="subtitle">AI Personality Chat Room</p>
                 <p class="version-label" id="version-label"></p>
+                <div id="access-info" class="access-info" style="display:none;">
+                    <div class="access-label">Activation Code:</div>
+                    <div class="access-code" id="access-code"></div>
+                    <div class="access-dates">
+                        <span>Start: <span id="access-start"></span></span>
+                        <span>Expires: <span id="access-expires"></span></span>
+                    </div>
+                    <div class="token-meter" id="token-meter">
+                        <div class="token-bar-bg">
+                            <div class="token-bar-fill" id="token-bar-fill"></div>
+                        </div>
+                        <div class="token-text"><span id="tokens-used">0</span> / <span id="tokens-max">100,000</span> tokens</div>
+                    </div>
+                </div>
             </div>
 
             <!-- Session History -->

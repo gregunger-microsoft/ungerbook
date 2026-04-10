@@ -6,6 +6,9 @@ A local Python web application that hosts a real-time chat room where multiple A
 
 - **Multi-personality discussions** — Select 1–10 AI personalities with unique expertise (security, cloud architecture, engineering leadership, legal, QA, ops, and more)
 - **Directed messaging** — Address a personality by name (e.g., "Alex, what do you think?") and only they respond. Open messages go to the whole group
+- **Guestbook access gating** — Users must register with a `@microsoft.com` email to receive a 1-hour activation code via email
+- **Token metering** — Real-time tracking of Azure OpenAI token usage per activation code with configurable budget (default: 100k tokens)
+- **Admin dashboard** — View all registrations, activation status, token usage, and timestamps at `/admin`
 - **Autonomous conversation flow** — Personalities decide whether they have something valuable to add before responding; no forced turns
 - **Persistent memory** — Each personality remembers key facts across sessions via continuous summarization
 - **Moderator controls** — Mute/unmute personalities mid-conversation
@@ -61,14 +64,20 @@ pip install -r requirements.txt
 
 ### 3. Configure `.env`
 
-Create a `.env` file in the project root:
+Copy `example.env` to `.env` and fill in your values:
+
+```bash
+cp example.env .env
+```
 
 ```
+# Azure OpenAI
 AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
 AZURE_OPENAI_DEPLOYMENT=your-deployment-name
 AZURE_OPENAI_API_VERSION=2025-04-01-preview
 AZURE_OPENAI_API_KEY=your-api-key
 
+# Conversation settings
 CONVERSATION_MODE=autonomous
 AI_RESPONSE_DELAY_SECONDS=2
 MAX_AI_RESPONSES_PER_ROUND=5
@@ -76,9 +85,18 @@ MAX_CONTEXT_MESSAGES=50
 ENABLE_STREAMING=false
 MEMORY_SUMMARIZATION_INTERVAL=10
 
+# Storage
 DATABASE_PATH=data/moltbook.db
 PERSONALITIES_FILE=personalities.json
 SESSION_EXPORT_DIR=data/sessions
+
+# SMTP (for guestbook activation emails)
+SMTP_HOST=smtp.office365.com
+SMTP_PORT=587
+SMTP_USERNAME=you@microsoft.com
+SMTP_PASSWORD=your-app-password
+SMTP_FROM_EMAIL=you@microsoft.com
+APP_BASE_URL=http://localhost:8000
 ```
 
 All settings are required. The app will fail fast with a clear error message if any value is missing or blank.
@@ -104,6 +122,12 @@ Open **http://localhost:8000** in your browser.
 | `DATABASE_PATH` | SQLite database file path | File path |
 | `PERSONALITIES_FILE` | Personality definitions JSON | File path |
 | `SESSION_EXPORT_DIR` | Directory for JSON session exports | Directory path |
+| `SMTP_HOST` | SMTP server hostname | `smtp.office365.com`, `smtp.gmail.com` |
+| `SMTP_PORT` | SMTP server port | `587` (TLS) |
+| `SMTP_USERNAME` | SMTP login username | Email address |
+| `SMTP_PASSWORD` | SMTP login password or app password | String |
+| `SMTP_FROM_EMAIL` | Sender email address | Email address |
+| `APP_BASE_URL` | Base URL for activation links in emails | `http://localhost:8000` or Azure URL |
 
 ## Conversation Modes
 
@@ -119,6 +143,7 @@ Each personality takes a turn in order after a human message. Each may respond o
 Moltbook/
 ├── main.py                          # FastAPI entry point + /api/version
 ├── VERSION                          # Semver version file
+├── example.env                      # Template .env with sample values
 ├── Dockerfile                       # Container image definition
 ├── entrypoint.sh                    # Writes env vars to .env at container start
 ├── .dockerignore
@@ -126,12 +151,17 @@ Moltbook/
 │   ├── config.py                    # .env loading + strict validation
 │   ├── models/                      # Dataclasses: Session, Message, Personality, Memory
 │   ├── services/
-│   │   ├── personality_engine.py    # Azure OpenAI calls (relevance + response)
+│   │   ├── personality_engine.py    # Azure OpenAI calls + token usage tracking
 │   │   ├── orchestrator.py          # Conversation flow + directed messaging
-│   │   └── memory_service.py        # Continuous memory summarization
-│   ├── repositories/                # SQLite data access (Repository pattern)
+│   │   ├── memory_service.py        # Continuous memory summarization
+│   │   └── email_service.py         # SMTP activation email delivery
+│   ├── repositories/
+│   │   ├── session_repository.py    # Session CRUD
+│   │   ├── message_repository.py    # Message CRUD
+│   │   ├── memory_repository.py     # Memory CRUD
+│   │   └── guestbook_repository.py  # Guestbook registration + token metering
 │   ├── websocket/handler.py         # WebSocket protocol
-│   └── frontend-dist/               # Static HTML/CSS/JS
+│   └── frontend-dist/               # Static HTML/CSS/JS (app + guestbook + admin)
 ├── personalities.json               # Personality library
 ├── tests/                           # 51 unit tests
 └── data/                            # SQLite DB + JSON exports (gitignored)
@@ -180,6 +210,31 @@ Restart the server. The new personality appears in the UI automatically.
 ## License
 
 Private project.
+
+## Guestbook Access Gating
+
+### How it works
+1. User visits the app → redirected to `/guestbook`
+2. User enters their `@microsoft.com` email
+3. Activation email sent with a 6-character code and clickable link
+4. Clicking the link auto-activates and sets a 1-hour session cookie
+5. Token usage is tracked in real-time against a 100k token budget per activation
+6. When time or tokens expire, user is redirected back to `/guestbook`
+
+### Admin dashboard
+Visit `/admin` to see all registrations with email, code, status, token usage, and timestamps.
+
+### Guestbook data tracked
+
+| Field | Description |
+|-------|-------------|
+| `email` | Registrant's @microsoft.com email |
+| `activation_code` | 6-character code |
+| `created_at` | Registration timestamp |
+| `activated_at` | When the code was used (access start) |
+| `expires_at` | When access ends (1 hour from registration) |
+| `tokens_used` | Cumulative Azure OpenAI tokens consumed |
+| `max_tokens` | Token budget for this activation (default: 100,000) |
 
 ## Azure Deployment
 

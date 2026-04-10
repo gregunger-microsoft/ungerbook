@@ -17,6 +17,12 @@ class AppConfig:
     database_path: str
     personalities_file: str
     session_export_dir: str
+    smtp_host: str
+    smtp_port: int
+    smtp_username: str
+    smtp_password: str
+    smtp_from_email: str
+    app_base_url: str
 
 
 _REQUIRED_KEYS = [
@@ -33,6 +39,12 @@ _REQUIRED_KEYS = [
     "DATABASE_PATH",
     "PERSONALITIES_FILE",
     "SESSION_EXPORT_DIR",
+    "SMTP_HOST",
+    "SMTP_PORT",
+    "SMTP_USERNAME",
+    "SMTP_PASSWORD",
+    "SMTP_FROM_EMAIL",
+    "APP_BASE_URL",
 ]
 
 
@@ -72,4 +84,10 @@ def load_config(env_path: str = ".env") -> AppConfig:
         database_path=values["DATABASE_PATH"].strip(),
         personalities_file=values["PERSONALITIES_FILE"].strip(),
         session_export_dir=values["SESSION_EXPORT_DIR"].strip(),
+        smtp_host=values["SMTP_HOST"].strip(),
+        smtp_port=int(values["SMTP_PORT"].strip()),
+        smtp_username=values["SMTP_USERNAME"].strip(),
+        smtp_password=values["SMTP_PASSWORD"].strip(),
+        smtp_from_email=values["SMTP_FROM_EMAIL"].strip(),
+        app_base_url=values["APP_BASE_URL"].strip().rstrip("/"),
     )

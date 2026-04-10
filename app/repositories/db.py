@@ -40,4 +40,25 @@ async def init_database(db_path: str) -> None:
                 last_updated TEXT NOT NULL
             )
         """)
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS guestbook (
+                id TEXT PRIMARY KEY,
+                email TEXT NOT NULL,
+                activation_code TEXT NOT NULL UNIQUE,
+                created_at TEXT NOT NULL,
+                activated_at TEXT,
+                expires_at TEXT NOT NULL,
+                is_active INTEGER NOT NULL DEFAULT 0,
+                tokens_used INTEGER NOT NULL DEFAULT 0,
+                max_tokens INTEGER NOT NULL DEFAULT 100000
+            )
+        """)
+        await db.execute("""
+            CREATE INDEX IF NOT EXISTS idx_guestbook_code
+            ON guestbook(activation_code)
+        """)
+        await db.execute("""
+            CREATE INDEX IF NOT EXISTS idx_guestbook_email
+            ON guestbook(email, created_at)
+        """)
         await db.commit()

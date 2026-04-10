@@ -39,6 +39,12 @@ def test_env_path(test_dir, test_db_path):
         f"DATABASE_PATH={test_db_path}\n"
         f"PERSONALITIES_FILE=personalities.json\n"
         f"SESSION_EXPORT_DIR={test_dir}/sessions\n"
+        f"SMTP_HOST=smtp.test.com\n"
+        f"SMTP_PORT=587\n"
+        f"SMTP_USERNAME=test@microsoft.com\n"
+        f"SMTP_PASSWORD=test-password\n"
+        f"SMTP_FROM_EMAIL=test@microsoft.com\n"
+        f"APP_BASE_URL=http://localhost:8000\n"
     )
     env_file = test_dir / ".env"
     env_file.write_text(env_content)

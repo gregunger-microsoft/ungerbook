@@ -1,5 +1,6 @@
 import json
 import logging
+from typing import Optional
 
 from fastapi import WebSocket, WebSocketDisconnect
 
@@ -9,9 +10,11 @@ logger = logging.getLogger(__name__)
 
 
 class WebSocketHandler:
-    def __init__(self, orchestrator: Orchestrator) -> None:
+    def __init__(self, orchestrator: Orchestrator, guestbook_repo=None) -> None:
         self._orchestrator = orchestrator
+        self._guestbook_repo = guestbook_repo
         self._connection: WebSocket | None = None
+        self._guestbook_code: Optional[str] = None
 
     async def _send_json(self, data: dict) -> None:
         if self._connection is not None:
@@ -24,6 +27,26 @@ class WebSocketHandler:
         await websocket.accept()
         self._connection = websocket
         self._orchestrator.set_send_callback(self._send_json)
+
+        # Extract guestbook code from cookies for token tracking
+        self._guestbook_code = websocket.cookies.get("guestbook_token")
+        if self._guestbook_repo and self._guestbook_code:
+            async def token_callback(tokens: int) -> None:
+                entry = await self._guestbook_repo.increment_tokens(self._guestbook_code, tokens)
+                if entry:
+                    await self._send_json({
+                        "type": "token_update",
+                        "tokens_used": entry.tokens_used,
+                        "max_tokens": entry.max_tokens,
+                    })
+                    if entry.tokens_used >= entry.max_tokens:
+                        await self._send_json({
+                            "type": "error",
+                            "message": "Token budget exhausted. Your activation code has reached its limit.",
+                        })
+            self._orchestrator.set_token_callback(token_callback)
+        else:
+            self._orchestrator.set_token_callback(None)
 
         try:
             while True:

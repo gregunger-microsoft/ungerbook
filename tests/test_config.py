@@ -2,6 +2,15 @@ import pytest
 
 from app.config import load_config
 
+_SMTP_LINES = (
+    "SMTP_HOST=smtp.test.com\n"
+    "SMTP_PORT=587\n"
+    "SMTP_USERNAME=test@microsoft.com\n"
+    "SMTP_PASSWORD=test-password\n"
+    "SMTP_FROM_EMAIL=test@microsoft.com\n"
+    "APP_BASE_URL=http://localhost:8000\n"
+)
+
 
 class TestConfigValidation:
     def test_load_valid_config(self, test_env_path):
@@ -36,6 +45,7 @@ class TestConfigValidation:
             f"DATABASE_PATH={test_db_path}\n"
             f"PERSONALITIES_FILE=personalities.json\n"
             f"SESSION_EXPORT_DIR={test_dir}/sessions\n"
+            + _SMTP_LINES
         )
         env_file = test_dir / ".env"
         env_file.write_text(env_content)
@@ -57,6 +67,7 @@ class TestConfigValidation:
             f"DATABASE_PATH={test_db_path}\n"
             f"PERSONALITIES_FILE=personalities.json\n"
             f"SESSION_EXPORT_DIR={test_dir}/sessions\n"
+            + _SMTP_LINES
         )
         env_file = test_dir / ".env"
         env_file.write_text(env_content)
@@ -78,6 +89,7 @@ class TestConfigValidation:
             f"DATABASE_PATH={test_db_path}\n"
             f"PERSONALITIES_FILE=personalities.json\n"
             f"SESSION_EXPORT_DIR={test_dir}/sessions\n"
+            + _SMTP_LINES
         )
         env_file = test_dir / ".env"
         env_file.write_text(env_content)
@@ -99,6 +111,7 @@ class TestConfigValidation:
             f"DATABASE_PATH={test_db_path}\n"
             f"PERSONALITIES_FILE=personalities.json\n"
             f"SESSION_EXPORT_DIR={test_dir}/sessions\n"
+            + _SMTP_LINES
         )
         env_file = test_dir / ".env"
         env_file.write_text(env_content)

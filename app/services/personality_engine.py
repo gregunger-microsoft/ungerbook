@@ -20,6 +20,13 @@ class RelevanceResult:
     urgency: int
 
 
+@dataclass
+class TokenUsage:
+    prompt_tokens: int
+    completion_tokens: int
+    total_tokens: int
+
+
 class PersonalityEngine:
     def __init__(self, config: AppConfig, client: AsyncAzureOpenAI) -> None:
         self._config = config
@@ -70,7 +77,7 @@ class PersonalityEngine:
         recent_messages: list[Message],
         new_message: Message,
         memory_text: Optional[str] = None,
-    ) -> RelevanceResult:
+    ) -> tuple[RelevanceResult, TokenUsage]:
         conversation_text = "\n".join(
             f"[{m.sender_name}]: {m.content}" for m in recent_messages[-10:]
         )
@@ -105,6 +112,12 @@ class PersonalityEngine:
                 max_completion_tokens=100,
             )
 
+            usage = TokenUsage(
+                prompt_tokens=response.usage.prompt_tokens if response.usage else 0,
+                completion_tokens=response.usage.completion_tokens if response.usage else 0,
+                total_tokens=response.usage.total_tokens if response.usage else 0,
+            )
+
             raw = response.choices[0].message.content.strip()
             logger.debug(f"Relevance raw response from {personality.name}: {raw}")
             # Strip markdown code fence if present
@@ -120,7 +133,7 @@ class PersonalityEngine:
                 urgency=int(parsed.get("urgency", 5)),
             )
             logger.info(f"Relevance for {personality.name}: respond={result.should_respond}, urgency={result.urgency}, reason={result.reason}")
-            return result
+            return result, usage
 
         except (json.JSONDecodeError, KeyError, TypeError) as e:
             logger.warning(f"Relevance check parse error for {personality.name}: {e}")
@@ -129,7 +142,7 @@ class PersonalityEngine:
                 should_respond=False,
                 reason="Failed to parse relevance response",
                 urgency=0,
-            )
+            ), usage
         except Exception as e:
             logger.error(f"Relevance check error for {personality.name}: {e}")
             return RelevanceResult(
@@ -137,7 +150,7 @@ class PersonalityEngine:
                 should_respond=False,
                 reason=f"Error: {e}",
                 urgency=0,
-            )
+            ), TokenUsage(0, 0, 0)
 
     async def generate_response(
         self,
@@ -145,7 +158,7 @@ class PersonalityEngine:
         topic: str,
         recent_messages: list[Message],
         memory_text: Optional[str] = None,
-    ) -> str:
+    ) -> tuple[str, TokenUsage]:
         context = self.build_context_messages(personality, topic, recent_messages, memory_text)
 
         response = await self._client.chat.completions.create(
@@ -155,7 +168,12 @@ class PersonalityEngine:
             max_completion_tokens=500,
         )
 
-        return response.choices[0].message.content.strip()
+        usage = TokenUsage(
+            prompt_tokens=response.usage.prompt_tokens if response.usage else 0,
+            completion_tokens=response.usage.completion_tokens if response.usage else 0,
+            total_tokens=response.usage.total_tokens if response.usage else 0,
+        )
+        return response.choices[0].message.content.strip(), usage
 
     async def generate_response_stream(
         self,
@@ -172,8 +190,20 @@ class PersonalityEngine:
             temperature=0.8,
             max_completion_tokens=500,
             stream=True,
+            stream_options={"include_usage": True},
         )
 
         async for chunk in stream:
             if chunk.choices and chunk.choices[0].delta.content:
                 yield chunk.choices[0].delta.content
+            if hasattr(chunk, "usage") and chunk.usage:
+                self._last_stream_usage = TokenUsage(
+                    prompt_tokens=chunk.usage.prompt_tokens or 0,
+                    completion_tokens=chunk.usage.completion_tokens or 0,
+                    total_tokens=chunk.usage.total_tokens or 0,
+                )
+
+    def get_last_stream_usage(self) -> TokenUsage:
+        usage = getattr(self, "_last_stream_usage", TokenUsage(0, 0, 0))
+        self._last_stream_usage = TokenUsage(0, 0, 0)
+        return usage
