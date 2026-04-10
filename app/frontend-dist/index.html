@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ungerbook — AI Chat Room</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Sidebar -->
+        <aside id="sidebar">
+            <div class="sidebar-header">
+                <h1>Ungerbook</h1>
+                <p class="subtitle">AI Personality Chat Room</p>
+            </div>
+
+            <!-- Session History -->
+            <div id="session-history" class="sidebar-section">
+                <h3>Past Sessions</h3>
+                <div id="session-list" class="session-list"></div>
+            </div>
+
+            <!-- Moderator Panel (visible during session) -->
+            <div id="moderator-panel" class="sidebar-section" style="display:none;">
+                <h3>Moderator</h3>
+                <div id="personality-toggles"></div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main id="main">
+            <!-- Setup Panel (before session starts) -->
+            <div id="setup-panel">
+                <h2>Start a New Conversation</h2>
+
+                <div class="form-group">
+                    <label for="topic-input">Topic</label>
+                    <input type="text" id="topic-input" placeholder="What should the group discuss?" maxlength="500">
+                    <div id="sample-topics">
+                        <span class="sample-label">Try:</span>
+                        <button class="topic-chip" data-topic="Should we migrate our monolith to microservices?">Monolith vs Microservices</button>
+                        <button class="topic-chip" data-topic="How should we secure AI agents that have access to production data?">Securing AI Agents</button>
+                        <button class="topic-chip" data-topic="Design a multi-region disaster recovery strategy for our SaaS platform">Disaster Recovery Strategy</button>
+                        <button class="topic-chip" data-topic="What are the legal and ethical risks of deploying LLMs in healthcare?">LLMs in Healthcare</button>
+                        <button class="topic-chip" data-topic="Our CI/CD pipeline takes 45 minutes. How do we cut it to under 10?">Faster CI/CD Pipeline</button>
+                        <button class="topic-chip" data-topic="Should we build or buy an internal AI copilot for our engineering team?">Build vs Buy AI Copilot</button>
+                        <button class="topic-chip" data-topic="How do we handle PII in our RAG pipeline while staying GDPR compliant?">PII in RAG Pipelines</button>
+                        <button class="topic-chip" data-topic="Plan the rollout of a new API versioning strategy without breaking existing clients">API Versioning Rollout</button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Select Personalities (1-10)</label>
+                    <div id="personality-selector"></div>
+                </div>
+
+                <button id="start-btn" class="btn btn-primary" disabled>Start Session</button>
+            </div>
+
+            <!-- Chat Panel (during session) -->
+            <div id="chat-panel" style="display:none;">
+                <div id="chat-header">
+                    <div id="chat-topic"></div>
+                    <div id="chat-controls">
+                        <button id="pause-btn" class="btn btn-secondary">Pause AI</button>
+                        <button id="autoscroll-btn" class="btn btn-secondary active">Auto-scroll: ON</button>
+                        <button id="end-btn" class="btn btn-danger">End Session</button>
+                    </div>
+                </div>
+
+                <div id="chat-messages"></div>
+
+                <div id="thinking-indicator" style="display:none;">
+                    <span class="thinking-dots"></span>
+                    <span id="thinking-names"></span>
+                </div>
+
+                <div id="chat-input-area">
+                    <input type="text" id="message-input" placeholder="Type your message..." maxlength="2000">
+                    <button id="send-btn" class="btn btn-primary">Send</button>
+                </div>
+            </div>
+
+            <!-- History Viewer (read-only past session) -->
+            <div id="history-panel" style="display:none;">
+                <div id="history-header">
+                    <button id="history-back-btn" class="btn btn-secondary">&larr; Back</button>
+                    <div id="history-topic"></div>
+                </div>
+                <div id="history-messages"></div>
+            </div>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
