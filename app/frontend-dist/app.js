@@ -41,6 +41,17 @@
     async function init() {
         await loadPersonalities();
         await loadSessionHistory();
+        await loadVersion();
+    }
+
+    async function loadVersion() {
+        try {
+            const res = await fetch("/api/version");
+            const data = await res.json();
+            document.getElementById("version-label").textContent = "v" + data.version;
+        } catch (e) {
+            document.getElementById("version-label").textContent = "";
+        }
     }
 
     async function loadPersonalities() {

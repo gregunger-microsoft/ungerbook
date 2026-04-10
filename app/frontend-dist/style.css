@@ -44,6 +44,13 @@ aside#sidebar {
     color: #888;
 }
 
+.version-label {
+    font-size: 0.65rem;
+    color: #444;
+    margin: 4px 0 0;
+    font-family: monospace;
+}
+
 .sidebar-section {
     padding: 16px 20px;
     border-bottom: 1px solid #0f3460;
