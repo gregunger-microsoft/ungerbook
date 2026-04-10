@@ -62,6 +62,17 @@ class AutonomousStrategy(ConversationStrategy):
         if not eligible:
             return
 
+        # Check if the message is directed at specific personalities
+        mentioned = detect_mentioned_personalities(
+            new_message.content, state.personalities, new_message.sender_id
+        )
+        if mentioned:
+            # Only allow mentioned personalities that are eligible
+            eligible = [pid for pid in mentioned if pid in eligible]
+            logger.info(f"Directed message detected -> {[state.personalities[p].name for p in eligible]}")
+            if not eligible:
+                return
+
         recent = await message_repo.get_by_session(
             state.session.id, limit=config.max_context_messages
         )
@@ -231,6 +242,28 @@ def get_eligible_personalities(state: ConversationState, last_sender_id: str) ->
         pid for pid in state.personalities
         if pid not in state.muted and pid != last_sender_id
     ]
+
+
+def detect_mentioned_personalities(
+    content: str,
+    personalities: dict[str, Personality],
+    sender_id: str,
+) -> list[str]:
+    """Detect if a message addresses specific personalities by name.
+    Returns list of mentioned personality IDs, or empty list if no specific mention."""
+    content_lower = content.lower()
+    mentioned = []
+    for pid, p in personalities.items():
+        if pid == sender_id:
+            continue
+        # Match first name, last name, or full name
+        name_parts = p.name.lower().split()
+        full_name = p.name.lower()
+        if full_name in content_lower:
+            mentioned.append(pid)
+        elif any(part in content_lower.split() for part in name_parts if len(part) > 2):
+            mentioned.append(pid)
+    return mentioned
 
 
 def order_response_queue(
