@@ -45,8 +45,8 @@ aside#sidebar {
 }
 
 .version-label {
-    font-size: 0.65rem;
-    color: #444;
+    font-size: 0.7rem;
+    color: #32cd32;
     margin: 4px 0 0;
     font-family: monospace;
 }
