@@ -84,8 +84,17 @@ orchestrator = Orchestrator(
 # --- WebSocket handler ---
 ws_handler = WebSocketHandler(orchestrator)
 
+# --- Version ---
+_version_file = os.path.join(os.path.dirname(__file__), "VERSION")
+APP_VERSION = open(_version_file).read().strip() if os.path.exists(_version_file) else "dev"
+
 # --- FastAPI app ---
-app = FastAPI(title="Ungerbook", version="1.0.0")
+app = FastAPI(title="Ungerbook", version=APP_VERSION)
+
+
+@app.get("/api/version")
+async def get_version() -> JSONResponse:
+    return JSONResponse({"version": APP_VERSION})
 
 
 @app.on_event("startup")
