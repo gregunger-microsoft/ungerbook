@@ -576,3 +576,15 @@ main#main {
     text-align: center;
     padding: 20px 0;
 }
+
+.chat-welcome {
+    text-align: center;
+    color: #666;
+    font-size: 0.9rem;
+    padding: 40px 20px;
+    line-height: 1.6;
+}
+
+.chat-welcome strong {
+    color: #e94560;
+}

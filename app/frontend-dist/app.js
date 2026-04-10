@@ -276,7 +276,8 @@ ${rows}
         pauseBtn.textContent = "Pause AI";
         pauseBtn.classList.remove("paused");
         chatTopic.textContent = topic;
-        chatMessages.innerHTML = "";
+        chatMessages.innerHTML = `<div class="chat-welcome">Press <strong>Send</strong> to kick off the discussion, or edit the message below first.</div>`;
+        messageInput.value = topic;
         renderModeratorPanel();
     }
 
@@ -317,6 +318,9 @@ ${rows}
 
     // --- Chat Messages ---
     function appendMessage(data) {
+        const welcome = chatMessages.querySelector(".chat-welcome");
+        if (welcome) welcome.remove();
+
         const isHuman = data.sender_id === "human";
         const div = document.createElement("div");
         div.className = `chat-message ${isHuman ? "human" : "ai"}`;
